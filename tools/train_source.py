@@ -19,7 +19,6 @@ from utils.eval import Eval
 from utils.train_helper import get_model
 
 from datasets.cityscapes_Dataset import City_Dataset, City_DataLoader, inv_preprocess, decode_labels
-from datasets.gta5_Dataset import GTA5_DataLoader
 from datasets.synthia_Dataset import SYNTHIA_DataLoader
 from datasets.bewteencity_Dataset import Group_Dataset, Group0_DataLoader, Group1_DataLoader
 
