@@ -30,7 +30,6 @@ sys.path.append(os.path.abspath('.'))
 from utils.eval import Eval
 from utils.loss import *
 from datasets.cityscapes_Dataset import City_Dataset, City_DataLoader, inv_preprocess, decode_labels
-from datasets.gta5_Dataset import GTA5_DataLoader, GTA5_Dataset
 from datasets.synthia_Dataset import SYNTHIA_Dataset
 
 from tools.train_source import *
