@@ -271,9 +271,9 @@ class UDATrainer(Trainer):
                 x = Variable(x).to(self.device)
             pred_target = self.model(x)
             if isinstance(pred, tuple):
-                pred_pred_target2 = pred_target[1]
-                pred_target = pred_target[0]
-                pred_P_2 = F.softmax(pred_pred_target2, dim=1)
+                pred_target2 = pred_target[1]
+                pred_P = pred_target[0]
+                pred_P_2 = F.softmax(pred_target2, dim=1)
 
             pred_P = F.softmax(pred_target, dim=1)
             # pred_P是output 而pred_P_2是middle
