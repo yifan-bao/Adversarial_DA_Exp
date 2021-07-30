@@ -21,8 +21,8 @@ sys.path.append(os.path.abspath('.'))
 from utils.eval import Eval
 from utils.loss import *
 from datasets.cityscapes_Dataset import City_Dataset, City_DataLoader, inv_preprocess, decode_labels
-from datasets.gta5_Dataset import GTA5_DataLoader, GTA5_Dataset
 from datasets.synthia_Dataset import SYNTHIA_Dataset
+from datasets.bewteencity_Dataset import Group_Dataset
 
 from tools.train_source import *
 
@@ -90,7 +90,7 @@ class UDATrainer(Trainer):
                                 class_16=args.class_16,
                                 group=1)
             # val 
-            target_data_set_val = City_Dataset(args, 
+            target_data_set_val = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split='val',
