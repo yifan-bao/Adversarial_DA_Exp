@@ -93,9 +93,9 @@ class Trainer():
             self.dataloader = City_DataLoader(self.args)  
         
         elif self.args.dataset == 'group1': 
-            self.dataloader = Group1_DataLoader(self,args)  # 这个是在迁移的时候-dataset就用group1
+            self.dataloader = Group1_DataLoader(self.args)  # 这个是在迁移的时候-dataset就用group1
         elif self.args.dataset == 'group0':
-            self.dataloader = Group0_DataLoader(self,args)  # 源域上先训练Group0
+            self.dataloader = Group0_DataLoader(self.args)  # 源域上先训练Group0
         else:
             self.dataloader = SYNTHIA_DataLoader(self.args)
         self.dataloader.num_iterations = min(self.dataloader.num_iterations, ITER_MAX)
