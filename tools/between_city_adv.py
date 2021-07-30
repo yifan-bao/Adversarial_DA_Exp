@@ -1,12 +1,4 @@
-'''
-@Description: 
-@version: 
-@Company: 
-@Author: Minghao Chen
-@Date: 2019-03-02 14:06:37
-@LastEditors: Minghao Chen
-@LastEditTime: 2019-09-27 18:22:46
-'''
+
 import os
 import random
 import logging
@@ -40,7 +32,7 @@ from graphs.models.discriminator import FCDiscriminator
 class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
-        # self.source_dataset == 'group0'
+        # self.source_dataset == 'synthia'
         # split = args.source_split
         source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
@@ -90,7 +82,7 @@ class UDATrainer(Trainer):
         
         # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
         self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
-  
+
         # val 
         target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
@@ -100,7 +92,7 @@ class UDATrainer(Trainer):
                                 crop_size=args.target_crop_size,
                                 class_16=args.class_16,
                                 group=1)
-
+        
         self.target_val_dataloader = data.DataLoader(target_data_set,
                                             batch_size=self.args.batch_size,
                                             shuffle=False,
@@ -111,8 +103,7 @@ class UDATrainer(Trainer):
         self.dataloader.val_loader = self.target_val_dataloader
         self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
-        # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
-        self.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
+        ## 其实这里本来就是迁移到cityscapes上-因此不用target改也可以的
 
 
         ######### 以上是数据集加载部分 -- 几个数据集要明确下 #########
@@ -142,9 +133,6 @@ class UDATrainer(Trainer):
         # labels for adversarial training
         self.source_label = 0
         self.target_label = 1
-        
-
-
 
     def main(self):
         # display args details
@@ -272,13 +260,13 @@ class UDATrainer(Trainer):
             x, _, _ = batch_t
             if self.cuda:
                 x = Variable(x).to(self.device)
-            pred = self.model(x)
-            if isinstance(pred, tuple):
-                pred_2 = pred[1]
-                pred = pred[0]
-                pred_P_2 = F.softmax(pred_2, dim=1)
+            pred_target = self.model(x)
+            if isinstance(pred_target, tuple):
+                pred_target2 = pred_target[1]
+                pred_target = pred_target[0]
+                pred_P_2 = F.softmax(pred_target2, dim=1)
 
-            pred_P = F.softmax(pred, dim=1)
+            pred_P = F.softmax(pred_target, dim=1)
             # pred_P是output 而pred_P_2是middle
 
             D_out1 = self.model_D1(pred_P)
@@ -306,49 +294,42 @@ class UDATrainer(Trainer):
                 param.requires_grad = True
 
             # train with source
-            pred1 = pred1.detach()
-            pred2 = pred2.detach()
-
+            pred1 = pred.detach()  # 取消梯度传递分割模型
             D_out1 = self.model_D1(F.softmax(pred1))
-            D_out2 = self.model_D2(F.softmax(pred2))
-
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
-            
-            loss_D2 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out2.data.size()).fill_(self.source_label)).to(self.device))
-            
-
             loss_D1 = loss_D1 / 2
-            loss_D2 = loss_D2 / 2
-
             loss_D1.backward()
-            loss_D2.backward() # 更新D
-
             loss_D_value1 += loss_D1.cpu().item() / iter_num
-            loss_D_value2 += loss_D2.cpu().item() / iter_num
+
+            if self.args.multi:
+                pred2 = pred_2.detach()
+                D_out2 = self.model_D2(F.softmax(pred2))
+                loss_D2 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out2.data.size()).fill_(self.source_label)).to(self.device))
+                loss_D2 = loss_D2 / 2
+                loss_D2.backward()  
+                loss_D_value2 += loss_D2.cpu().item() / iter_num 
+                # 只有multi的时候才训练第二个判别器-否则只用第一个就行了
 
             # train with target
-            pred_target1 = pred_target1.detach()
-            pred_target2 = pred_target2.detach()
-
-            D_out1 = self.model_D1(F.softmax(pred_target1))
-            D_out2 = self.model_D2(F.softmax(pred_target2))
-
+            pred_target = pred_target.detach()
+            D_out1 = self.model_D1(F.softmax(pred_target))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
-
-            loss_D2 = self.bce_loss(D_out2, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
-
             loss_D1 = loss_D1 / 2
-            loss_D2 = loss_D2 / 2
-
             loss_D1.backward()
-            loss_D2.backward()
-
             loss_D_value1 += loss_D1.cpu().item() / iter_num
-            loss_D_value2 += loss_D2.cpu().item() / iter_num
+
+            if self.args.multi:    
+                pred_target2 = pred_target2.detach()
+                D_out2 = self.model_D2(F.softmax(pred_target2))
+                loss_D2 = self.bce_loss(D_out2, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
+                loss_D2 = loss_D2 / 2
+                loss_D2.backward()
+                loss_D_value2 += loss_D2.cpu().item() / iter_num
 
             self.optimizer.step()
             self.optimizer_D1.step()
-            self.optimizer_D2.step()
+            if self.args.multi:
+                self.optimizer_D2.step()
             # ok
             if batch_idx % 400 == 0:
                 if self.args.multi:
