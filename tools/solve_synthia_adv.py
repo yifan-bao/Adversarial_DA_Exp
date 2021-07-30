@@ -74,7 +74,7 @@ class UDATrainer(Trainer):
         target_data_set = City_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
-                                split='val',
+                                split=args.split,
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
                                 class_16=args.class_16)
@@ -303,7 +303,7 @@ class UDATrainer(Trainer):
 
             # train with source
             pred1 = pred.detach()  # 取消梯度传递分割模型
-            D_out1 = self.model_D1(F.softmax(pred1))
+            D_out1 = self.model_D1(F.softmax(pred1,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
             loss_D1.backward()
@@ -311,7 +311,7 @@ class UDATrainer(Trainer):
 
             if self.args.multi:
                 pred2 = pred_2.detach()
-                D_out2 = self.model_D2(F.softmax(pred2))
+                D_out2 = self.model_D2(F.softmax(pred2, dim=1))
                 loss_D2 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out2.data.size()).fill_(self.source_label)).to(self.device))
                 loss_D2 = loss_D2 / 2
                 loss_D2.backward()  
@@ -320,7 +320,7 @@ class UDATrainer(Trainer):
 
             # train with target
             pred_target = pred_target.detach()
-            D_out1 = self.model_D1(F.softmax(pred_target))
+            D_out1 = self.model_D1(F.softmax(pred_target,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
             loss_D1.backward()
@@ -328,7 +328,7 @@ class UDATrainer(Trainer):
 
             if self.args.multi:    
                 pred_target2 = pred_target2.detach()
-                D_out2 = self.model_D2(F.softmax(pred_target2))
+                D_out2 = self.model_D2(F.softmax(pred_target2,dim=1))
                 loss_D2 = self.bce_loss(D_out2, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
                 loss_D2 = loss_D2 / 2
                 loss_D2.backward()

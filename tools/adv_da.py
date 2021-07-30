@@ -1,12 +1,3 @@
-'''
-@Description: 
-@version: 
-@Company: 
-@Author: Minghao Chen
-@Date: 2019-03-02 14:06:37
-@LastEditors: Minghao Chen
-@LastEditTime: 2019-09-27 18:22:46
-'''
 import os
 import random
 import logging
@@ -41,49 +32,93 @@ class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
         
-        
-        
-        # self.source_dataset == 'synthia'
-        # split = args.source_split
-        source_data_set = SYNTHIA_Dataset(args, 
+        if self.args.source_dataset == 'synthia':
+            source_data_set_train = SYNTHIA_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split=args.source_split,
                                     base_size=args.base_size,
                                     crop_size=args.crop_size,
                                     class_16=args.class_16) 
-        # 注意class_16是True还是False--synthia一般是16为True
-        # 同时也留意一下class_13的情况-最后结果输出是需要的 
-        self.source_dataloader = data.DataLoader(source_data_set,
-                                               batch_size=self.args.batch_size,
-                                               shuffle=True,
-                                               num_workers=self.args.data_loader_workers,
-                                               pin_memory=self.args.pin_memory,
-                                               drop_last=True)
-        # split = 'val
-        source_data_set = SYNTHIA_Dataset(args, 
+            source_data_set_val = SYNTHIA_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split='val',
                                     base_size=args.base_size,
                                     crop_size=args.crop_size,
                                     class_16=args.class_16)
-        self.source_val_dataloader = data.DataLoader(source_data_set,
-                                               batch_size=self.args.batch_size,
-                                               shuffle=False,
-                                               num_workers=self.args.data_loader_workers,
-                                               pin_memory=self.args.pin_memory,
-                                               drop_last=True)
-
-        target_data_set = City_Dataset(args, 
+            target_data_set_train = City_Dataset(args, 
+                                data_root_path=args.data_root_path,
+                                list_path=args.list_path,
+                                split=args.split,
+                                base_size=args.target_base_size,
+                                crop_size=args.target_crop_size,
+                                class_16=args.class_16)
+            # val 
+            target_data_set_val = City_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split='val',
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
                                 class_16=args.class_16)
+            
+        elif self.args.source_dataset == 'group0':
+            source_data_set_train = Group_Dataset(args, 
+                                    data_root_path=args.source_data_path,
+                                    list_path=args.source_list_path,
+                                    split=args.source_split,
+                                    base_size=args.base_size,
+                                    crop_size=args.crop_size,
+                                    class_16=args.class_16,
+                                    group=0)
+            source_data_set_val = Group_Dataset(args, 
+                                    data_root_path=args.source_data_path,
+                                    list_path=args.source_list_path,
+                                    split='val',
+                                    base_size=args.base_size,
+                                    crop_size=args.crop_size,
+                                    class_16=args.class_16,
+                                    group=0)
+
+            target_data_set_train = Group_Dataset(args, 
+                                data_root_path=args.data_root_path,
+                                list_path=args.list_path,
+                                split=args.split,
+                                base_size=args.target_base_size,
+                                crop_size=args.target_crop_size,
+                                class_16=args.class_16,
+                                group=1)
+            # val 
+            target_data_set_val = City_Dataset(args, 
+                                data_root_path=args.data_root_path,
+                                list_path=args.list_path,
+                                split='val',
+                                base_size=args.target_base_size,
+                                crop_size=args.target_crop_size,
+                                class_16=args.class_16,
+                                group=1)
+        #### 其他就是自定义增加了
+
+        # data.DataLoader - train
+        self.source_dataloader = data.DataLoader(source_data_set_train,
+                                               batch_size=self.args.batch_size,
+                                               shuffle=True,
+                                               num_workers=self.args.data_loader_workers,
+                                               pin_memory=self.args.pin_memory,
+                                               drop_last=True)
+            
+        # data.DataLoader - val # 其实source不用val的
+        self.source_val_dataloader = data.DataLoader(source_data_set_val,
+                                               batch_size=self.args.batch_size,
+                                               shuffle=False,
+                                               num_workers=self.args.data_loader_workers,
+                                               pin_memory=self.args.pin_memory,
+                                               drop_last=True)
+
+        
         # 注意这里的class_16 -- 应该是要和前面对应 -- 仔细检查
-        self.target_dataloader = data.DataLoader(target_data_set,
+        self.target_dataloader = data.DataLoader(target_data_set_train,
                                                batch_size=self.args.batch_size,
                                                shuffle=True,
                                                num_workers=self.args.data_loader_workers,
@@ -91,29 +126,20 @@ class UDATrainer(Trainer):
                                                drop_last=True)
         
         # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
-        self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
+        self.dataloader.num_iterations = (len(target_data_set_train) + self.args.batch_size) // self.args.batch_size
 
         # val 
-        target_data_set = City_Dataset(args, 
-                                data_root_path=args.data_root_path,
-                                list_path=args.list_path,
-                                split='val',
-                                base_size=args.target_base_size,
-                                crop_size=args.target_crop_size,
-                                class_16=args.class_16)
-        
-        self.target_val_dataloader = data.DataLoader(target_data_set,
+        self.target_val_dataloader = data.DataLoader(target_data_set_val,
                                             batch_size=self.args.batch_size,
                                             shuffle=False,
                                             num_workers=self.args.data_loader_workers,
                                             pin_memory=self.args.pin_memory,
                                             drop_last=True)
 
+        # 这个self.dataloader应该没啥用-主要就是父类继承了
+        # 先放着-可能还有用
         self.dataloader.val_loader = self.target_val_dataloader
-        self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
-
-        ## 其实这里本来就是迁移到cityscapes上-因此不用target改也可以的
-
+        self.dataloader.valid_iterations = (len(target_data_set_val) + self.args.batch_size) // self.args.batch_size
 
         ######### 以上是数据集加载部分 -- 几个数据集要明确下 #########
         self.ignore_index = -1
@@ -307,7 +333,7 @@ class UDATrainer(Trainer):
 
             # train with source
             pred1 = pred.detach()  # 取消梯度传递分割模型
-            D_out1 = self.model_D1(F.softmax(pred1))
+            D_out1 = self.model_D1(F.softmax(pred1,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
             loss_D1.backward()
@@ -315,7 +341,7 @@ class UDATrainer(Trainer):
 
             if self.args.multi:
                 pred2 = pred_2.detach()
-                D_out2 = self.model_D2(F.softmax(pred2))
+                D_out2 = self.model_D2(F.softmax(pred2, dim=1))
                 loss_D2 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out2.data.size()).fill_(self.source_label)).to(self.device))
                 loss_D2 = loss_D2 / 2
                 loss_D2.backward()  
@@ -324,7 +350,7 @@ class UDATrainer(Trainer):
 
             # train with target
             pred_target = pred_target.detach()
-            D_out1 = self.model_D1(F.softmax(pred_target))
+            D_out1 = self.model_D1(F.softmax(pred_target,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
             loss_D1.backward()
@@ -332,7 +358,7 @@ class UDATrainer(Trainer):
 
             if self.args.multi:    
                 pred_target2 = pred_target2.detach()
-                D_out2 = self.model_D2(F.softmax(pred_target2))
+                D_out2 = self.model_D2(F.softmax(pred_target2,dim=1))
                 loss_D2 = self.bce_loss(D_out2, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
                 loss_D2 = loss_D2 / 2
                 loss_D2.backward()
@@ -376,7 +402,7 @@ class UDATrainer(Trainer):
         #eval on source domain
         # self.validate_source() # 为啥是source domain eval？ 也可以把-两个都看看-之后再改
         # 无法理解为啥叔在source domain上验证?
-        self.validate_target(self)
+        self.validate_target()
 
     def validate_target(self):
         self.logger.info('\nvalidating target domain...')
@@ -477,7 +503,7 @@ class UDATrainer(Trainer):
 
 def add_UDA_train_args(arg_parser):
     arg_parser.add_argument('--source_dataset', default='synthia', type=str,
-                            choices=['group0', 'synthia','group1'],
+                            choices=['gta5', 'synthia'],
                             help='source dataset choice')
     arg_parser.add_argument('--source_split', default='train', type=str,
                             help='source datasets split')
