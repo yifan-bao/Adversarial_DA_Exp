@@ -40,6 +40,9 @@ from graphs.models.discriminator import FCDiscriminator
 class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
+        
+        
+        
         # self.source_dataset == 'synthia'
         # split = args.source_split
         source_data_set = SYNTHIA_Dataset(args, 
@@ -373,7 +376,7 @@ class UDATrainer(Trainer):
         #eval on source domain
         # self.validate_source() # 为啥是source domain eval？ 也可以把-两个都看看-之后再改
         # 无法理解为啥叔在source domain上验证?
-        self.validate_target()
+        self.validate_target(self)
 
     def validate_target(self):
         self.logger.info('\nvalidating target domain...')
@@ -474,7 +477,7 @@ class UDATrainer(Trainer):
 
 def add_UDA_train_args(arg_parser):
     arg_parser.add_argument('--source_dataset', default='synthia', type=str,
-                            choices=['gta5', 'synthia'],
+                            choices=['group0', 'synthia','group1'],
                             help='source dataset choice')
     arg_parser.add_argument('--source_split', default='train', type=str,
                             help='source datasets split')

@@ -29,18 +29,12 @@ datasets_path={
     'cityscapes': {'data_root_path': './datasets/Cityscapes', 'list_path': './datasets/city_list', 
                     'image_path':'./datasets/Cityscapes/leftImg8bit',
                     'gt_path': './datasets/Cityscapes/gtFine'},
-    'gta5': {'data_root_path': './datasets/GTA5', 'list_path': './datasets/GTA5/list',
-                    'image_path':'./datasets/GTA5/images',
-                    'gt_path': './datasets/GTA5/labels'},
-
     'synthia': {'data_root_path': './datasets/SYNTHIA', 'list_path': './datasets/synthia_list',
                     'image_path':'./datasets/SYNTHIA/RGB',
                     'gt_path': './datasets/SYNTHIA/GT/LABELS'},
     'between': {'data_root_path': './datasets/Cityscapes', 'list_path': './datasets/between_city_list', 
                     'image_path':'./datasets/Cityscapes/leftImg8bit',
                     'gt_path': './datasets/Cityscapes/gtFine'},
-
-    'NTHU': {'data_root_path': './datasets/NTHU_Datasets', 'list_path': './datasets/NTHU_list'}
     }
 
 def str2bool(v):
@@ -548,7 +542,7 @@ def add_train_args(arg_parser):
 
     # dataset related arguments
     arg_parser.add_argument('--dataset', default='cityscapes', type=str,
-                            help='dataset choice')
+                            help='dataset choice') # 
     arg_parser.add_argument('--base_size', default="1280,720", type=str,
                             help='crop size of image')
     arg_parser.add_argument('--crop_size', default="1280,720", type=str,
