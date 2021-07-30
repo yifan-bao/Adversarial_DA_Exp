@@ -270,9 +270,9 @@ class UDATrainer(Trainer):
             if self.cuda:
                 x = Variable(x).to(self.device)
             pred_target = self.model(x)
-            if isinstance(pred, tuple):
+            if isinstance(pred_target, tuple):
                 pred_target2 = pred_target[1]
-                pred_P = pred_target[0]
+                pred_target = pred_target[0]
                 pred_P_2 = F.softmax(pred_target2, dim=1)
 
             pred_P = F.softmax(pred_target, dim=1)
@@ -320,8 +320,8 @@ class UDATrainer(Trainer):
                 # 只有multi的时候才训练第二个判别器-否则只用第一个就行了
 
             # train with target
-            pred_target1 = pred_target1.detach()
-            D_out1 = self.model_D1(F.softmax(pred_target1))
+            pred_target = pred_target.detach()
+            D_out1 = self.model_D1(F.softmax(pred_target))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
             loss_D1.backward()
