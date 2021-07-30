@@ -31,9 +31,12 @@ datasets_path={
     'synthia': {'data_root_path': './datasets/SYNTHIA', 'list_path': './datasets/synthia_list',
                     'image_path':'./datasets/SYNTHIA/RGB',
                     'gt_path': './datasets/SYNTHIA/GT/LABELS'},
-    'between': {'data_root_path': './datasets/Cityscapes', 'list_path': './datasets/between_city_list', 
+    'group0': {'data_root_path': './datasets/Cityscapes', 'list_path': './datasets/between_city_list', 
                     'image_path':'./datasets/Cityscapes/leftImg8bit',
                     'gt_path': './datasets/Cityscapes/gtFine'},
+    'group1': {'data_root_path': './datasets/Cityscapes', 'list_path': './datasets/between_city_list', 
+                    'image_path':'./datasets/Cityscapes/leftImg8bit',
+                    'gt_path': './datasets/Cityscapes/gtFine'}
     }
 
 def str2bool(v):

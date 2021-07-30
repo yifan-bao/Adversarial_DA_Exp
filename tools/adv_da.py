@@ -503,7 +503,7 @@ class UDATrainer(Trainer):
 
 def add_UDA_train_args(arg_parser):
     arg_parser.add_argument('--source_dataset', default='synthia', type=str,
-                            choices=['gta5', 'synthia'],
+                            choices=['group0', 'synthia'],
                             help='source dataset choice')
     arg_parser.add_argument('--source_split', default='train', type=str,
                             help='source datasets split')
