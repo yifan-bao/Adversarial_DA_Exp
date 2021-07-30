@@ -42,7 +42,7 @@ class SYNTHIA_Dataset(City_Dataset):
         self.gaussian_blur = args.gaussian_blur # 数据增强flag设置
 
         item_list_filepath = os.path.join(self.list_path, self.split+".txt") # 数据列表文件-也可以不用这种方式的-我估计源代码也是借鉴的-然后就是为了统一结构
-
+        print(item_list_filepath)
         if not os.path.exists(item_list_filepath):
             raise Warning("split must be train/val/trainavl/test")
 
