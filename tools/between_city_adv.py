@@ -30,8 +30,8 @@ sys.path.append(os.path.abspath('.'))
 from utils.eval import Eval
 from utils.loss import *
 from datasets.cityscapes_Dataset import City_Dataset, City_DataLoader, inv_preprocess, decode_labels
-from datasets.gta5_Dataset import GTA5_DataLoader, GTA5_Dataset
 from datasets.synthia_Dataset import SYNTHIA_Dataset
+from datasets.bewteencity_Dataset import Group0_DataLoader, Group1_DataLoader, Group_Dataset
 
 from tools.train_source import *
 
@@ -40,9 +40,9 @@ from graphs.models.discriminator import FCDiscriminator
 class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
-        # self.source_dataset == 'synthia'
+        # self.source_dataset == 'group0'
         # split = args.source_split
-        source_data_set = SYNTHIA_Dataset(args, 
+        source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split=args.source_split,
@@ -58,7 +58,7 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
         # split = 'val
-        source_data_set = SYNTHIA_Dataset(args, 
+        source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split='val',
@@ -72,13 +72,14 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
 
-        target_data_set = City_Dataset(args, 
+        target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split='val',
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
-                                class_16=args.class_16)
+                                class_16=args.class_16,
+                                group=1)
         # 注意这里的class_16 -- 应该是要和前面对应 -- 仔细检查
         self.target_dataloader = data.DataLoader(target_data_set,
                                                batch_size=self.args.batch_size,
@@ -89,16 +90,17 @@ class UDATrainer(Trainer):
         
         # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
         self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
-
+  
         # val 
-        target_data_set = City_Dataset(args, 
+        target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split='val',
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
-                                class_16=args.class_16)
-        
+                                class_16=args.class_16,
+                                group=1)
+
         self.target_val_dataloader = data.DataLoader(target_data_set,
                                             batch_size=self.args.batch_size,
                                             shuffle=False,
@@ -109,7 +111,8 @@ class UDATrainer(Trainer):
         self.dataloader.val_loader = self.target_val_dataloader
         self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
-        ## 其实这里本来就是迁移到cityscapes上-因此不用target改也可以的
+        # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
+        self.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
 
         ######### 以上是数据集加载部分 -- 几个数据集要明确下 #########
@@ -381,103 +384,6 @@ class UDATrainer(Trainer):
         # self.validate_source() # 为啥是source domain eval？ 也可以把-两个都看看-之后再改
         # 无法理解为啥叔在source domain上验证?
         self.validate_target(self)
-
-    def validate_target(self):
-        self.logger.info('\nvalidating target domain...')
-        self.Eval.reset()
-        with torch.no_grad():
-            tqdm_batch = tqdm(self.target_val_dataloader, total=self.dataloader.valid_iterations,
-                              desc="Target Val Epoch-{}-".format(self.current_epoch + 1))
-            self.model.eval()
-            i = 0
-            for x, y, id in tqdm_batch:
-                # y.to(torch.long)
-                if self.cuda:
-                    x, y = x.to(self.device), y.to(device=self.device, dtype=torch.long)
-
-                # model
-                pred = self.model(x)
-
-                if isinstance(pred, tuple):
-                    pred_2 = pred[1]
-                    pred = pred[0]
-                    pred_P = F.softmax(pred, dim=1)
-                    pred_P_2 = F.softmax(pred_2, dim=1)
-                y = torch.squeeze(y, 1)
-
-                pred = pred.data.cpu().numpy()
-                label = y.cpu().numpy()
-                argpred = np.argmax(pred, axis=1)
-
-                self.Eval.add_batch(label, argpred)
-
-                i += 1
-                if i == self.dataloader.valid_iterations:
-                    break
-
-            #show val result on tensorboard
-            images_inv = inv_preprocess(x.clone().cpu(), self.args.show_num_images, numpy_transform=self.args.numpy_transform)
-            labels_colors = decode_labels(label, self.args.show_num_images)
-            preds_colors = decode_labels(argpred, self.args.show_num_images)
-            for index, (img, lab, color_pred) in enumerate(zip(images_inv, labels_colors, preds_colors)):
-                self.writer.add_image('target_eval/'+str(index)+'/Images', img, self.current_epoch)
-                self.writer.add_image('target_eval/'+str(index)+'/Labels', lab, self.current_epoch)
-                self.writer.add_image('target_eval/'+str(index)+'/preds', color_pred, self.current_epoch)
-
-            if self.args.class_16:
-                def target_val_info(Eval, name):
-                    PA = Eval.Pixel_Accuracy()
-                    MPA_16, MPA_13 = Eval.Mean_Pixel_Accuracy()
-                    MIoU_16, MIoU_13 = Eval.Mean_Intersection_over_Union()
-                    FWIoU_16, FWIoU_13 = Eval.Frequency_Weighted_Intersection_over_Union()
-                    PC_16, PC_13 = Eval.Mean_Precision()
-                    print("########## Source Eval{} ############".format(name))
-
-                    self.logger.info('\nEpoch:{:.3f}, target {} PA:{:.3f}, MPA_16:{:.3f}, MIoU_16:{:.3f}, FWIoU_16:{:.3f}, PC_16:{:.3f}'.format(self.current_epoch, name, PA, MPA_16,
-                                                                                                MIoU_16, FWIoU_16, PC_16))
-                    self.logger.info('\nEpoch:{:.3f}, target {} PA:{:.3f}, MPA_13:{:.3f}, MIoU_13:{:.3f}, FWIoU_13:{:.3f}, PC_13:{:.3f}'.format(self.current_epoch, name, PA, MPA_13,
-                                                                                                MIoU_13, FWIoU_13, PC_13))
-                    self.writer.add_scalar('target_PA'+name, PA, self.current_epoch)
-                    self.writer.add_scalar('target_MPA_16'+name, MPA_16, self.current_epoch)
-                    self.writer.add_scalar('target_MIoU_16'+name, MIoU_16, self.current_epoch)
-                    self.writer.add_scalar('target_FWIoU_16'+name, FWIoU_16, self.current_epoch)
-                    self.writer.add_scalar('target_MPA_13'+name, MPA_13, self.current_epoch)
-                    self.writer.add_scalar('target_MIoU_13'+name, MIoU_13, self.current_epoch)
-                    self.writer.add_scalar('target_FWIoU_13'+name, FWIoU_13, self.current_epoch)
-                    return PA, MPA_13, MIoU_13, FWIoU_13
-            else:
-                def target_val_info(Eval, name):
-                    PA = Eval.Pixel_Accuracy()
-                    MPA = Eval.Mean_Pixel_Accuracy()
-                    MIoU = Eval.Mean_Intersection_over_Union()
-                    FWIoU = Eval.Frequency_Weighted_Intersection_over_Union()
-                    PC = Eval.Mean_Precision()
-
-                    self.writer.add_scalar('target_PA'+name, PA, self.current_epoch)
-                    self.writer.add_scalar('target_MPA'+name, MPA, self.current_epoch)
-                    self.writer.add_scalar('target_MIoU'+name, MIoU, self.current_epoch)
-                    self.writer.add_scalar('target_FWIoU'+name, FWIoU, self.current_epoch)
-                    print("########## Target Eval{} ############".format(name))
-
-                    self.logger.info('\nEpoch:{:.3f}, target {} PA1:{:.3f}, MPA1:{:.3f}, MIoU1:{:.3f}, FWIoU1:{:.3f}, PC:{:.3f}'.format(self.current_epoch, name, PA, MPA,
-                                                                                                MIoU, FWIoU, PC))
-                    return PA, MPA, MIoU, FWIoU
-        
-            PA, MPA, MIoU, FWIoU = target_val_info(self.Eval, "")
-            tqdm_batch.close()
-
-        is_best = MIoU > self.best_source_MIou
-        if is_best:
-            self.best_source_MIou = MIoU
-            self.best_source_iter = self.current_iter
-            self.logger.info("=>saving a new best source checkpoint...")
-            self.save_checkpoint(self.train_id+'target_best.pth')
-        else:
-            self.logger.info("=> The target MIoU of val does't improve.")
-            self.logger.info("=> The best target MIoU of val is {} at {}".format(self.best_source_MIou, self.best_source_iter))
-
-        return PA, MPA, MIoU, FWIoU
-
 
 def add_UDA_train_args(arg_parser):
     arg_parser.add_argument('--source_dataset', default='synthia', type=str,
