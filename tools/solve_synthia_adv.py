@@ -497,9 +497,9 @@ def add_UDA_train_args(arg_parser):
     
     arg_parser.add_argument("--lambda-seg", type=float, default=0.1,
                         help="lambda_seg.")
-    arg_parser.add_argument("--lambda-adv-target1", type=float, default=0.0002,
+    arg_parser.add_argument("--lambda-adv-target1", type=float, default=0.001,
                         help="lambda_adv for adversarial training.")
-    arg_parser.add_argument("--lambda-adv-target2", type=float, default=0.001,
+    arg_parser.add_argument("--lambda-adv-target2", type=float, default=0.0002,
                         help="lambda_adv for adversarial training.") 
     arg_parser.add_argument("--learning-rate-D", type=float, default=1e-4,
                         help="Base learning rate for discriminator.")

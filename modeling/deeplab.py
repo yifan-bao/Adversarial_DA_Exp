@@ -29,7 +29,6 @@ class DeepLab(nn.Module):
         x = self.aspp(x)
         x = self.decoder(x, low_level_feat)
         x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
-
         return x
 
     def freeze_bn(self):
