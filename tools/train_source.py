@@ -141,6 +141,8 @@ class Trainer():
             self.train_one_epoch()
 
             # validate
+            # 在train_source下他是验证原本的训练集
+            # 在domain adaptation下他是验证的target domain
             PA, MPA, MIoU, FWIoU = self.validate()
             self.writer.add_scalar('PA', PA, self.current_epoch)
             self.writer.add_scalar('MPA', MPA, self.current_epoch)
