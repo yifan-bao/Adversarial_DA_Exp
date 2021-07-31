@@ -1,6 +1,4 @@
 import os
-import random
-import logging
 import argparse
 import torch
 import torch.nn as nn
@@ -16,10 +14,10 @@ import sys
 sys.path.append(os.path.abspath('.'))
 from utils.eval import Eval, inspect_decode_labels, softmax
 from datasets.cityscapes_Dataset import City_DataLoader, inv_preprocess, decode_labels, name_classes
-from datasets.gta5_Dataset import GTA5_DataLoader
-from datasets.crosscity_Dataset import CrossCity_Dataset
 from tools.train_source import *
 from utils.train_helper import get_model
+from datasets.bewteencity_Dataset import Group_Dataset, Group0_DataLoader, Group1_DataLoader
+
 
 class Evaluater():
     def __init__(self, args, cuda=None, train_id=None, logger=None):
@@ -52,8 +50,8 @@ class Evaluater():
 
         # load pretrained checkpoint
         if self.args.pretrained_ckpt_file is not None:
-            path1 = os.path.join(*self.args.checkpoint_dir.split('/')[:-1], self.train_id + 'best.pth')
-            path2 = self.args.pretrained_ckpt_file
+            path1 = os.path.join(*self.args.checkpoint_dir.split('/')[:-1], self.train_id + 'best.pth') 
+            path2 = self.args.pretrained_ckpt_file # 这里的俩路径注意下
             if os.path.exists(path1):
                 pretrained_ckpt_file = path1
             elif os.path.exists(path2):
@@ -63,14 +61,17 @@ class Evaluater():
             self.load_checkpoint(pretrained_ckpt_file)
 
         # dataloader
-        self.dataloader = City_DataLoader(self.args) if self.args.dataset=="cityscapes" else GTA5_DataLoader(self.args)
+        self.dataloader = City_DataLoader(self.args) if self.args.dataset=="cityscapes" else Group1_DataLoader(self.args)
+        
         if self.args.city_name != "None":
-            target_data_set = CrossCity_Dataset(self.args, 
+            target_data_set = Group_Dataset(self.args, 
                                     data_root_path=self.args.data_root_path,
                                     list_path=self.args.list_path,
                                     split='val',
                                     base_size=self.args.target_base_size,
                                     crop_size=self.args.target_crop_size,
+                                    training=False,  # 这里都是val
+                                    class_16=self.args.class_16,
                                     class_13=self.args.class_13)
             self.target_val_dataloader = data.DataLoader(target_data_set,
                                                 batch_size=self.args.batch_size,
@@ -81,7 +82,7 @@ class Evaluater():
             self.dataloader.val_loader = self.target_val_dataloader
             self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
         else:
-            self.dataloader.val_loader = self.dataloader.data_loader
+            self.dataloader.val_loader = self.dataloader.data_loader  # 因为是val-所以split='val' # 其实也可以不用改的 本来就是同一个
             self.dataloader.valid_iterations = min(self.dataloader.num_iterations, 500)
         self.epoch_num = ceil(self.args.iter_max / self.dataloader.num_iterations)
 
@@ -95,7 +96,6 @@ class Evaluater():
 
         # validate
         self.validate()
-
         self.writer.close()
 
     def validate(self):
@@ -146,7 +146,7 @@ class Evaluater():
 
                 if i == self.dataloader.valid_iterations:
                     break
-                # 每20组加载一次-不明白之前为啥都显示同样的内容
+                # 
                 if i % 20 ==0 and self.args.image_summary:
                     #show val result on tensorboard
                     images_inv = inv_preprocess(x.clone().cpu(), self.args.show_num_images, numpy_transform=self.args.numpy_transform)
@@ -165,9 +165,9 @@ class Evaluater():
                     self.writer.add_image('0Images/'+str(index), img, self.current_epoch)
                     self.writer.add_image('a'+str(index)+'/Labels', lab, self.current_epoch)
                     self.writer.add_image('a'+str(index)+'/preds', color_pred, self.current_epoch)
-                    if self.args.multi:
-                        self.writer.add_image('a'+ str(index)+'/preds_2', preds_colors_2[index], self.current_epoch)
-                        self.writer.add_image('a'+ str(index)+'/preds_c', preds_colors_c[index], self.current_epoch)
+                    # if self.args.multi:
+                    #     self.writer.add_image('a'+ str(index)+'/preds_2', preds_colors_2[index], self.current_epoch)
+                    #     self.writer.add_image('a'+ str(index)+'/preds_c', preds_colors_c[index], self.current_epoch)
             # get eval result
             if self.args.class_16:
                 def val_info(Eval, name):
@@ -242,9 +242,11 @@ if __name__ == '__main__':
     args, train_id, logger = init_args(args)
     args.batch_size_per_gpu = 2
 
+    # 有city_name的就是group之间的迁移-到city的验证 -- 之后还得再增加一个大group的结果
     if args.city_name != "None":
-        args.data_root_path = os.path.join(datasets_path['NTHU']['data_root_path'], args.city_name)
-        args.list_path = os.path.join(datasets_path['NTHU']['list_path'], args.city_name, 'List')
+        args.data_root_path = datasets_path['group1']['data_root_path']
+        args.list_path = datasets_path['group1']['data_root_path']
+        
         args.target_crop_size = (1024,512)
         args.target_base_size = (1024,512)
     args.crop_size = args.target_crop_size

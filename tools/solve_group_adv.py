@@ -1,12 +1,7 @@
 import os
-import random
-import logging
 import argparse
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 import numpy as np
 from math import ceil, floor
@@ -18,10 +13,8 @@ from torch.autograd import Variable
 
 import sys
 sys.path.append(os.path.abspath('.'))
-from utils.eval import Eval
 from utils.loss import *
-from datasets.cityscapes_Dataset import City_Dataset
-from datasets.synthia_Dataset import SYNTHIA_Dataset
+from datasets.bewteencity_Dataset import Group_Dataset
 
 from tools.train_source import *
 
@@ -30,17 +23,16 @@ from graphs.models.discriminator import FCDiscriminator
 class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
-        # self.source_dataset == 'synthia'
-        # split = args.source_split
-        source_data_set = SYNTHIA_Dataset(args, 
+        
+        source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split=args.source_split,
                                     base_size=args.base_size,
                                     crop_size=args.crop_size,
-                                    class_16=args.class_16) 
-        # 注意class_16是True还是False--synthia一般是16为True
-        # 同时也留意一下class_13的情况-最后结果输出是需要的 
+                                    class_16=args.class_16,
+                                    group=0) 
+
         self.source_dataloader = data.DataLoader(source_data_set,
                                                batch_size=self.args.batch_size,
                                                shuffle=True,
@@ -48,13 +40,14 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
         # split = 'val
-        source_data_set = SYNTHIA_Dataset(args, 
+        source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
                                     split='val',
                                     base_size=args.base_size,
                                     crop_size=args.crop_size,
-                                    class_16=args.class_16)
+                                    class_16=args.class_16,
+                                    group=0)
         self.source_val_dataloader = data.DataLoader(source_data_set,
                                                batch_size=self.args.batch_size,
                                                shuffle=False,
@@ -62,14 +55,14 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
 
-        target_data_set = City_Dataset(args, 
+        target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split=args.split,
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
-                                class_16=args.class_16)
-        # 注意这里的class_16 -- 应该是要和前面对应 -- 仔细检查
+                                class_16=args.class_16,
+                                group=1)
         self.target_dataloader = data.DataLoader(target_data_set,
                                                batch_size=self.args.batch_size,
                                                shuffle=True,
@@ -81,13 +74,14 @@ class UDATrainer(Trainer):
         self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
         # val 
-        target_data_set = City_Dataset(args, 
+        target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
                                 split='val',
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
-                                class_16=args.class_16)
+                                class_16=args.class_16,
+                                group=1)
         
         self.target_val_dataloader = data.DataLoader(target_data_set,
                                             batch_size=self.args.batch_size,
@@ -99,10 +93,6 @@ class UDATrainer(Trainer):
         self.dataloader.val_loader = self.target_val_dataloader
         self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
-        ## 其实这里本来就是迁移到cityscapes上-因此不用target改也可以的
-
-
-        ######### 以上是数据集加载部分 -- 几个数据集要明确下 #########
         self.ignore_index = -1
         
         self.current_round = self.args.init_round
@@ -361,7 +351,7 @@ class UDATrainer(Trainer):
 
 def add_UDA_train_args(arg_parser):
     arg_parser.add_argument('--source_dataset', default='synthia', type=str,
-                            choices=['gta5', 'synthia'],
+                            choices=['group0', 'synthia'],
                             help='source dataset choice')
     arg_parser.add_argument('--source_split', default='train', type=str,
                             help='source datasets split')

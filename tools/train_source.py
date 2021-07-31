@@ -599,6 +599,9 @@ def add_train_args(arg_parser):
                         help='output model middle feature')
     arg_parser.add_argument('--lambda_seg', type=float, default=0.1,
                         help="lambda_seg of middle output")
+    
+    arg_parser.add_argument('--city_name', default='None', type=str,
+                            help='target city')  # 这个是占位的-一般不用-只有在evaluate.py的时候使用-是进行域适配结果的检查
     return arg_parser
 
 def init_args(args):

@@ -45,14 +45,15 @@ class Group_Dataset(data.Dataset):
     def __init__(self,
                  args,
                  data_root_path=os.path.abspath('./datasets/Cityscapes'),
-                 list_path=os.path.abspath('./datasets/city_list'),
+                 list_path=os.path.abspath('./datasets/between_city_list'),
                  split='train',
                  base_size=769,
                  crop_size=769,
                  training=True,
                  class_16=False,
                  class_13=False,
-                 group=0):
+                 group=0
+                 ):
         """
 
         :param root_path:
@@ -90,6 +91,10 @@ class Group_Dataset(data.Dataset):
         self.gt_filepath = os.path.join(self.data_path, "gtFine")
 
         self.items = [id.strip() for id in open(item_list_filepath)]
+        
+        if self.args.city_name != 'None':
+            self.items = [id for id in self.items if id.split('_')[1] == self.args.city_name ]
+        # 限制只有city_name的城市可用
 
         ignore_label = -1
         self.id_to_trainid = {-1: ignore_label, 0: ignore_label, 1: ignore_label, 2: ignore_label,
