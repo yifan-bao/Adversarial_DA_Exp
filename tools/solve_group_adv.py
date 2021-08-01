@@ -398,7 +398,7 @@ if __name__ == '__main__':
 
     args.target_dataset = args.dataset
 
-    train_id = str(args.source_dataset)+"2"+str(args.target_dataset)+"_"+args.target_mode
+    train_id = str(args.source_dataset)+"2"+str(args.target_dataset) # +"_"+args.target_mode
 
     agent = UDATrainer(args=args, cuda=True, train_id=train_id, logger=logger)
     agent.main()

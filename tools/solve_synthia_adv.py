@@ -408,7 +408,8 @@ if __name__ == '__main__':
 
     args.target_dataset = args.dataset
 
-    train_id = str(args.source_dataset)+"2"+str(args.target_dataset)+"_"+args.target_mode
-
+    train_id = str(args.source_dataset)+"2"+str(args.target_dataset) # +"_"+args.target_mode # 因为没有用这个新构想的loss函数-所以就不用了
+    # 于是可以知道-train_id 就是 synthia2cityscapesbest.pth 
+    # synthia2cityscapestarget_best.pth 这个是在源域上的最佳模型-可能会提升原始的模型性能-但我们这里主要还是考察目标域的性能
     agent = UDATrainer(args=args, cuda=True, train_id=train_id, logger=logger)
     agent.main()

@@ -83,6 +83,7 @@ class Group_Dataset(data.Dataset):
         else:
             item_list_filepath = os.path.join(self.list_path, self.split+"1.txt")
         
+        print(item_list_filepath)
         if not os.path.exists(item_list_filepath):
             raise Warning("split must be train/val/trainval")
 

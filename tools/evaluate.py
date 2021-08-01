@@ -51,7 +51,7 @@ class Evaluater():
         # load pretrained checkpoint
         if self.args.pretrained_ckpt_file is not None:
             path1 = os.path.join(*self.args.checkpoint_dir.split('/')[:-1], self.train_id + 'best.pth') 
-            path2 = os.path.join(self.args.pretrained_ckpt_file,self.train_id + 'best.pth')  # self.args.pretrained_ckpt_file # 这里的俩路径注意下
+            path2 = self.args.pretrained_ckpt_file # 这里的俩路径注意下
             print("path1 is: "+path1)
             print("path2 is: "+path2)
             if os.path.exists(path1):
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     # 有city_name的就是group之间的迁移-到city的验证 -- 之后还得再增加一个大group的结果
     if args.city_name != "None":
         args.data_root_path = datasets_path['group1']['data_root_path']
-        args.list_path = datasets_path['group1']['data_root_path']
+        args.list_path = datasets_path['group1']['list_path']
         
         args.target_crop_size = (1024,512)
         args.target_base_size = (1024,512)
