@@ -12,7 +12,7 @@ from torchvision.utils import make_grid
 
 import sys
 sys.path.append(os.path.abspath('.'))
-from utils.eval import Eval, inspect_decode_labels, softmax
+from utils.eval import Eval
 from datasets.cityscapes_Dataset import City_DataLoader, inv_preprocess, decode_labels, name_classes
 from tools.train_source import *
 from utils.train_helper import get_model
@@ -51,7 +51,9 @@ class Evaluater():
         # load pretrained checkpoint
         if self.args.pretrained_ckpt_file is not None:
             path1 = os.path.join(*self.args.checkpoint_dir.split('/')[:-1], self.train_id + 'best.pth') 
-            path2 = self.args.pretrained_ckpt_file # 这里的俩路径注意下
+            path2 = os.path.join(self.args.pretrained_ckpt_file,self.train_id + 'best.pth')  # self.args.pretrained_ckpt_file # 这里的俩路径注意下
+            print("path1 is: "+path1)
+            print("path2 is: "+path2)
             if os.path.exists(path1):
                 pretrained_ckpt_file = path1
             elif os.path.exists(path2):
@@ -229,8 +231,8 @@ if __name__ == '__main__':
     arg_parser = add_train_args(arg_parser)
     arg_parser.add_argument('--source_dataset', default='None', type=str,
                             help='source dataset choice')
-    arg_parser.add_argument('--city_name', default='None', type=str,
-                            help='source dataset choice')
+    # arg_parser.add_argument('--city_name', default='None', type=str,
+    #                         help='source dataset choice')
     arg_parser.add_argument('--flip', type=str2bool, default=False,
                             help="flip")
     arg_parser.add_argument('--image_summary', type=str2bool, default=False,
@@ -239,6 +241,9 @@ if __name__ == '__main__':
     args = arg_parser.parse_args()
     if args.split == "train": args.split = "val"
     if args.checkpoint_dir == "none": args.checkpoint_dir = args.pretrained_ckpt_file + "/eval"
+
+    print(args.checkpoint_dir)
+
     args, train_id, logger = init_args(args)
     args.batch_size_per_gpu = 2
 
@@ -252,5 +257,8 @@ if __name__ == '__main__':
     args.crop_size = args.target_crop_size
     args.base_size = args.target_base_size
 
-    agent = Evaluater(args=args, cuda=True, train_id="train_id", logger=logger)
+    if args.source_dataset == "synthia":
+        train_id = "synthia"
+
+    agent = Evaluater(args=args, cuda=True, train_id=train_id, logger=logger)
     agent.main()
