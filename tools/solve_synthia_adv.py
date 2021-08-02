@@ -291,9 +291,7 @@ class UDATrainer(Trainer):
 
             # train with source
             pred1 = pred.detach()  # 取消梯度传递分割模型
-            if self.args.multi:
-                pred2 = pred_2.detach() # 这个也要取消回传
-
+            
             D_out1 = self.model_D1(F.softmax(pred1,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
