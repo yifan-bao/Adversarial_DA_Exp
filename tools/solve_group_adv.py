@@ -23,7 +23,7 @@ from graphs.models.discriminator import FCDiscriminator
 class UDATrainer(Trainer):
     def __init__(self, args, cuda=None, train_id="None", logger=None):
         super().__init__(args, cuda, train_id, logger)
-        
+        print("loading group0 datasets")
         source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
@@ -40,6 +40,7 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
         # split = 'val
+        print("loading group0 val datasets")
         source_data_set = Group_Dataset(args, 
                                     data_root_path=args.source_data_path,
                                     list_path=args.source_list_path,
@@ -54,7 +55,7 @@ class UDATrainer(Trainer):
                                                num_workers=self.args.data_loader_workers,
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
-
+        print("loading group1 datasets")
         target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
@@ -74,6 +75,7 @@ class UDATrainer(Trainer):
         self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
         # val 
+        print("loading group1 val datasets")
         target_data_set = Group_Dataset(args, 
                                 data_root_path=args.data_root_path,
                                 list_path=args.list_path,
