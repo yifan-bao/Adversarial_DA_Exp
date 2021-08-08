@@ -39,8 +39,6 @@ class UDATrainer(Trainer):
                                     base_size=args.base_size,
                                     crop_size=args.crop_size,
                                     class_16=args.class_16) 
-        # 注意class_16是True还是False--synthia一般是16为True
-        # 同时也留意一下class_13的情况-最后结果输出是需要的 
         self.source_dataloader = data.DataLoader(source_data_set,
                                                batch_size=self.args.batch_size,
                                                shuffle=True,
@@ -69,7 +67,6 @@ class UDATrainer(Trainer):
                                 base_size=args.target_base_size,
                                 crop_size=args.target_crop_size,
                                 class_16=args.class_16)
-        # 注意这里的class_16 -- 应该是要和前面对应 -- 仔细检查
         self.target_dataloader = data.DataLoader(target_data_set,
                                                batch_size=self.args.batch_size,
                                                shuffle=True,
@@ -77,7 +74,6 @@ class UDATrainer(Trainer):
                                                pin_memory=self.args.pin_memory,
                                                drop_last=True)
         
-        # 这里修改了下总的迭代次数-应该是按target来的把-也不明白为啥前面不行
         self.dataloader.num_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
         # val 
@@ -99,28 +95,22 @@ class UDATrainer(Trainer):
         self.dataloader.val_loader = self.target_val_dataloader
         self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
 
-        ## 其实这里本来就是迁移到cityscapes上-因此不用target改也可以的
-
-
-        ######### 以上是数据集加载部分 -- 几个数据集要明确下 #########
         self.ignore_index = -1
         
         self.current_round = self.args.init_round
         self.round_num = self.args.round_num
 
 
-        # 对抗训练相关模型初始化
+        # model initialization
         # init D
         self.model_D1 = FCDiscriminator(num_classes=self.args.num_classes)
         self.model_D2 = FCDiscriminator(num_classes=self.args.num_classes)
-        # 注意这里是按multi的形式-有两个输出
 
-        # D的优化器初始化
+        # D
         self.optimizer_D1 = torch.optim.Adam(self.model_D1.parameters(), lr=self.args.learning_rate_D, betas=(0.9, 0.99))
         self.optimizer_D2 = torch.optim.Adam(self.model_D2.parameters(), lr=self.args.learning_rate_D, betas=(0.9, 0.99))
-        # 注意增加args.learning_rate_D
         
-        # 判别器训练loss函数
+        # loss
         # if gan == 'Vanilla'
         self.bce_loss = torch.nn.BCEWithLogitsLoss()
         # if gan == 'LS'
@@ -139,7 +129,7 @@ class UDATrainer(Trainer):
         current_device = torch.cuda.current_device()
         self.logger.info("This model will run on {}".format(torch.cuda.get_device_name(current_device)))
 
-        # load pretrained checkpoint - 一般是都要有的-之前预训练目的就是这个
+        # load pretrained checkpoint 
         if self.args.pretrained_ckpt_file is not None:
             if os.path.isdir(self.args.pretrained_ckpt_file):
                 self.args.pretrained_ckpt_file = os.path.join(self.args.checkpoint_dir, self.train_id + 'final.pth')
@@ -151,7 +141,6 @@ class UDATrainer(Trainer):
             self.current_iter = 0
             self.current_epoch = 0
 
-        # 这个是当前的预适配的模型继续-前面的是预训练模型-在source domain上train的
         if self.args.continue_training:
             self.load_checkpoint(os.path.join(self.args.checkpoint_dir, self.train_id + 'final.pth'))
 
@@ -171,8 +160,7 @@ class UDATrainer(Trainer):
             # generate threshold
             self.threshold = self.args.threshold
 
-            self.train() # train的内容就是train one epoch - 然后validate部分应该也得修改下 
-            # train部分要看下-可能要重载下
+            self.train() 
 
             self.current_round += 1
         
@@ -184,43 +172,40 @@ class UDATrainer(Trainer):
         self.Eval.reset()
 
         # Initialize your average meters
-        # 这部分内容一个epoch输出一次 
-        loss_seg_value1 = 0  # 分割loss
+        loss_seg_value1 = 0  # segmentation loss
         loss_adv_target_value1 = 0
-        loss_D_value1 = 0    # 判别器loss
+        loss_D_value1 = 0    # discrimination loss
 
-        # 第二部分是multi部分-看情况有或没有-注意修改
         loss_seg_value2 = 0
         loss_adv_target_value2 = 0
         loss_D_value2 = 0 
 
-        # 分割模型训练模式
+        # segmentation model 
         self.model.train()    
 
-        # 判别器训练模式
+        # discriminator
         self.model_D1.train()
         self.model_D1.to(self.device)
         self.model_D2.train()
         self.model_D2.to(self.device)
         
-        iter_num = self.dataloader.num_iterations # 训练次数
+        iter_num = self.dataloader.num_iterations # 
         batch_idx = 0
         
-        # zip 命令--一次可以拿两个域的数据
         for batch_s, batch_t in tqdm_epoch:
-            # 学习率调整
+            # adjust learning rate
             self.poly_lr_scheduler(optimizer=self.optimizer, init_lr=self.args.lr)
             self.writer.add_scalar('learning_rate', self.optimizer.param_groups[0]["lr"], self.current_iter)                
             self.poly_lr_scheduler(optimizer=self.optimizer_D1, init_lr=self.args.learning_rate_D)
             self.writer.add_scalar('learning_rate_D', self.optimizer_D1.param_groups[0]["lr"], self.current_iter) 
             
-            # 梯度清零
+            # zero grad
             self.optimizer.zero_grad()
             self.optimizer_D1.zero_grad()
             self.optimizer_D2.zero_grad()
 
             # train G
-            # 关闭D训练
+            # close D training
             for param in self.model_D1.parameters():
                 param.requires_grad = False
 
@@ -233,14 +218,13 @@ class UDATrainer(Trainer):
                 x, y = Variable(x).to(self.device), Variable(y).to(device=self.device, dtype=torch.long)
             
             pred = self.model(x)
-            # pred 为tuple 就是multi方式
             if isinstance(pred, tuple):
                 pred_2 = pred[1]
                 pred = pred[0]
             y = torch.squeeze(y, 1)
 
-            # 分割loss
-            loss = self.loss(pred, y) # 最终结果的分割loss
+            # segmentation loss
+            loss = self.loss(pred, y) 
 
             loss_ = loss
             if self.args.multi:
@@ -248,9 +232,8 @@ class UDATrainer(Trainer):
                 loss_ += loss_2
                 loss_seg_value2 += loss_2.cpu().item() / iter_num   # middle output seg loss for one epoch 
             
-            loss_.backward() # 整合了middle和最终输出的loss bp
+            loss_.backward(retain_graph=True) # 
             loss_seg_value1 += loss.cpu().item() / iter_num # output seg loss for one epoch
-            ### 注意pred是output 而pred2是middle的-lambda_seg乘以的是middl部分-一般为0.1
             
             # train with target
             x, _, _ = batch_t
@@ -263,13 +246,12 @@ class UDATrainer(Trainer):
                 pred_P_2 = F.softmax(pred_target2, dim=1)
 
             pred_P = F.softmax(pred_target, dim=1)
-            # pred_P是output 而pred_P_2是middle
 
             D_out1 = self.model_D1(pred_P)
-            # 对抗loss
+            # adversarial loss
             loss_adv_target1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             
-            loss_ = loss_adv_target1 * self.args.lambda_adv_target1 # 记得增加上去 
+            loss_ = loss_adv_target1 * self.args.lambda_adv_target1 #  
             if self.args.multi:
                 D_out2 = self.model_D2(pred_P_2)
                 loss_adv_target2 = self.bce_loss(D_out2, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
@@ -279,7 +261,6 @@ class UDATrainer(Trainer):
             loss_adv_target_value1 += loss_adv_target1.cpu().item() / iter_num
             
             loss_.backward()  # loss_ = loss_adv_target1 * self.args.lambda_adv_target1 + loss_adv_target2 * self.args.lambda_adv_target2
-            
 
             # train D
             # bring back requires_grad
@@ -290,12 +271,12 @@ class UDATrainer(Trainer):
                 param.requires_grad = True
 
             # train with source
-            pred1 = pred.detach()  # 取消梯度传递分割模型
+            pred1 = pred.detach()  # 
             
             D_out1 = self.model_D1(F.softmax(pred1,dim=1))
             loss_D1 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(self.source_label)).to(self.device))
             loss_D1 = loss_D1 / 2
-            loss_D1.backward()
+            loss_D1.backward(retain_graph=True)
             loss_D_value1 += loss_D1.cpu().item() / iter_num
 
             if self.args.multi:
@@ -303,9 +284,8 @@ class UDATrainer(Trainer):
                 D_out2 = self.model_D2(F.softmax(pred2, dim=1))
                 loss_D2 = self.bce_loss(D_out1, Variable(torch.FloatTensor(D_out2.data.size()).fill_(self.source_label)).to(self.device))
                 loss_D2 = loss_D2 / 2
-                loss_D2.backward()  
+                loss_D2.backward(retain_graph=True)  
                 loss_D_value2 += loss_D2.cpu().item() / iter_num 
-                # 只有multi的时候才训练第二个判别器-否则只用第一个就行了
 
             # train with target
             pred_target = pred_target.detach()
@@ -355,7 +335,6 @@ class UDATrainer(Trainer):
             tqdm.write("The average adv_loss_2 of train epoch-{}-:{:.3f}".format(self.current_epoch, loss_adv_target_value2))
             self.writer.add_scalar('D_loss_2',loss_D2,self.current_epoch)
             tqdm.write("The average D_loss_2 of train epoch-{}-:{:.3f}".format(self.current_epoch, loss_D2))
-        # 一共6组loss显示数据 - 每个epoch显示平均值
         tqdm_epoch.close()
         
         self.validate_source()
@@ -409,8 +388,6 @@ if __name__ == '__main__':
 
     args.target_dataset = args.dataset
 
-    train_id = str(args.source_dataset)+"2"+str(args.target_dataset) # +"_"+args.target_mode # 因为没有用这个新构想的loss函数-所以就不用了
-    # 于是可以知道-train_id 就是 synthia2cityscapesbest.pth 
-    # synthia2cityscapestarget_best.pth 这个是在源域上的最佳模型-可能会提升原始的模型性能-但我们这里主要还是考察目标域的性能
+    train_id = str(args.source_dataset)+"2"+str(args.target_dataset) # +"_"+args.target_mode 
     agent = UDATrainer(args=args, cuda=True, train_id=train_id, logger=logger)
     agent.main()

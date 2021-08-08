@@ -93,9 +93,9 @@ class Trainer():
             self.dataloader = City_DataLoader(self.args)  
         
         elif self.args.dataset == 'group1': 
-            self.dataloader = Group1_DataLoader(self.args)  # 这个是在迁移的时候-dataset就用group1
+            self.dataloader = Group1_DataLoader(self.args)  # 
         elif self.args.dataset == 'group0':
-            self.dataloader = Group0_DataLoader(self.args)  # 源域上先训练Group0
+            self.dataloader = Group0_DataLoader(self.args)  # 
         else:
             self.dataloader = SYNTHIA_DataLoader(self.args)
         self.dataloader.num_iterations = min(self.dataloader.num_iterations, ITER_MAX)
@@ -141,8 +141,6 @@ class Trainer():
             self.train_one_epoch()
 
             # validate
-            # 在train_source下他是验证原本的训练集
-            # 在domain adaptation下他是验证的target domain
             PA, MPA, MIoU, FWIoU = self.validate()
             self.writer.add_scalar('PA', PA, self.current_epoch)
             self.writer.add_scalar('MPA', MPA, self.current_epoch)
@@ -321,7 +319,6 @@ class Trainer():
 
                 self.Eval.add_batch(label, argpred)
                 
-
             #show val result on tensorboard
             images_inv = inv_preprocess(x.clone().cpu(), self.args.show_num_images, numpy_transform=self.args.numpy_transform)
             labels_colors = decode_labels(label, self.args.show_num_images)
@@ -601,7 +598,7 @@ def add_train_args(arg_parser):
                         help="lambda_seg of middle output")
     
     arg_parser.add_argument('--city_name', default='None', type=str,
-                            help='target city')  # 这个是占位的-一般不用-只有在evaluate.py的时候使用-是进行域适配结果的检查
+                            help='target city') 
     return arg_parser
 
 def init_args(args):

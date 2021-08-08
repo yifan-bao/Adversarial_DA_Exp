@@ -29,8 +29,8 @@ class SYNTHIA_Dataset(City_Dataset):
         self.data_path=data_root_path
         self.list_path=list_path
         self.split=split
-        self.base_size=base_size # base size应该就是缩放的大小
-        self.crop_size=crop_size # crop size应该就是随机裁剪的大小
+        self.base_size=base_size 
+        self.crop_size=crop_size 
 
         self.base_size = self.base_size if isinstance(self.base_size, tuple) else (self.base_size, self.base_size) # 这个就是按元组存储 如果是一个数字-就是方形的
         self.crop_size = self.crop_size if isinstance(self.crop_size, tuple) else (self.crop_size, self.crop_size) # 同上
@@ -39,18 +39,18 @@ class SYNTHIA_Dataset(City_Dataset):
         self.random_mirror = args.random_mirror
         self.random_crop = args.random_crop
         self.resize = args.resize
-        self.gaussian_blur = args.gaussian_blur # 数据增强flag设置
+        self.gaussian_blur = args.gaussian_blur
 
-        item_list_filepath = os.path.join(self.list_path, self.split+".txt") # 数据列表文件-也可以不用这种方式的-我估计源代码也是借鉴的-然后就是为了统一结构
+        item_list_filepath = os.path.join(self.list_path, self.split+".txt") 
         print(item_list_filepath)
         if not os.path.exists(item_list_filepath):
             raise Warning("split must be train/val/trainavl/test")
 
-        self.image_filepath = os.path.join(self.data_path, "RGB")  # 图像数据
+        self.image_filepath = os.path.join(self.data_path, "RGB")  
 
-        self.gt_filepath = os.path.join(self.data_path, "GT/LABELS") # groundtruth数据
+        self.gt_filepath = os.path.join(self.data_path, "GT/LABELS") 
 
-        self.items = [id.strip() for id in open(item_list_filepath)] # item
+        self.items = [id.strip() for id in open(item_list_filepath)] 
 
         ignore_label = -1
         self.id_to_trainid = {1:10, 2:2, 3:0, 4:1, 5:4, 6:8, 7:5, 8:13, 
@@ -71,13 +71,13 @@ class SYNTHIA_Dataset(City_Dataset):
         image = Image.open(image_path).convert("RGB")
 
         gt_image_path = os.path.join(self.gt_filepath, "{:0>7d}.png".format(id))
-        gt_image = imageio.imread(gt_image_path, format='PNG-FI')[:,:,0]  # 读取第0个channel数据 -- 注意使用imageio.imread 读入的为uint16
-        gt_image = Image.fromarray(np.uint8(gt_image)) # 转换为uint8格式的PIL Image格式 统一操作
+        gt_image = imageio.imread(gt_image_path, format='PNG-FI')[:,:,0]  
+        gt_image = Image.fromarray(np.uint8(gt_image)) 
 
         if (self.split == "train" or self.split == "trainval" or self.split =="all") and self.training:
-            image, gt_image = self._train_sync_transform(image, gt_image) # 训练数据数据增强
+            image, gt_image = self._train_sync_transform(image, gt_image) 
         else:
-            image, gt_image = self._val_sync_transform(image, gt_image)   # 验证数据变换
+            image, gt_image = self._val_sync_transform(image, gt_image)   
 
         return image, gt_image, item
 

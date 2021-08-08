@@ -18,7 +18,6 @@ class Eval():
         self.ignore_index = None
         self.synthia = True if num_class == 16 else False
 
-    # 计算像素准确度
     def Pixel_Accuracy(self):
         if np.sum(self.confusion_matrix) == 0:
             print("Attention: pixel_total is zero!!!")
@@ -87,7 +86,6 @@ class Eval():
         Precision = np.nanmean(Precision[:self.ignore_index])
         return Precision
     
-    # 打印每个类的统计信息
     def Print_Every_class_Eval(self, out_16_13=False):
         MIoU = np.diag(self.confusion_matrix) / (
                     np.sum(self.confusion_matrix, axis=1) + np.sum(self.confusion_matrix, axis=0) -

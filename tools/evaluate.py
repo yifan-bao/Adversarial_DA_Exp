@@ -14,6 +14,7 @@ import sys
 sys.path.append(os.path.abspath('.'))
 from utils.eval import Eval
 from datasets.cityscapes_Dataset import City_DataLoader, inv_preprocess, decode_labels, name_classes
+from datasets.synthia_Dataset import SYNTHIA_DataLoader
 from tools.train_source import *
 from utils.train_helper import get_model
 from datasets.bewteencity_Dataset import Group_Dataset, Group0_DataLoader, Group1_DataLoader
@@ -51,20 +52,26 @@ class Evaluater():
         # load pretrained checkpoint
         if self.args.pretrained_ckpt_file is not None:
             path1 = os.path.join(*self.args.checkpoint_dir.split('/')[:-1], self.train_id + 'best.pth') 
-            path2 = self.args.pretrained_ckpt_file # 这里的俩路径注意下
+            path2 = self.args.pretrained_ckpt_file # 
             print("path1 is: "+path1)
             print("path2 is: "+path2)
+            print(os.path.exists(path2))
             if os.path.exists(path1):
-                pretrained_ckpt_file = path1
+                # pretrained_ckpt_file = path1
+                pretrained_ckpt_file = path2
             elif os.path.exists(path2):
                 pretrained_ckpt_file = path2
             else:
                 raise AssertionError("no pretrained_ckpt_file")
             self.load_checkpoint(pretrained_ckpt_file)
 
+        #self.model = nn.DataParallel(self.model, device_ids=[0])
+
         # dataloader
         self.dataloader = City_DataLoader(self.args) if self.args.dataset=="cityscapes" else Group1_DataLoader(self.args)
-        
+        if self.args.dataset == 'synthia':
+            self.dataloader = SYNTHIA_DataLoader(self.args)
+
         if self.args.city_name != "None":
             target_data_set = Group_Dataset(self.args, 
                                     data_root_path=self.args.data_root_path,
@@ -72,7 +79,7 @@ class Evaluater():
                                     split='val',
                                     base_size=self.args.target_base_size,
                                     crop_size=self.args.target_crop_size,
-                                    training=False,  # 这里都是val
+                                    training=False,  # 
                                     class_16=self.args.class_16,
                                     class_13=self.args.class_13)
             self.target_val_dataloader = data.DataLoader(target_data_set,
@@ -84,7 +91,7 @@ class Evaluater():
             self.dataloader.val_loader = self.target_val_dataloader
             self.dataloader.valid_iterations = (len(target_data_set) + self.args.batch_size) // self.args.batch_size
         else:
-            self.dataloader.val_loader = self.dataloader.data_loader  # 因为是val-所以split='val' # 其实也可以不用改的 本来就是同一个
+            self.dataloader.val_loader = self.dataloader.data_loader  # 
             self.dataloader.valid_iterations = min(self.dataloader.num_iterations, 500)
         self.epoch_num = ceil(self.args.iter_max / self.dataloader.num_iterations)
 
@@ -155,9 +162,9 @@ class Evaluater():
                     labels_colors = decode_labels(label, self.args.show_num_images)
                     preds_colors = decode_labels(argpred, self.args.show_num_images)
                     for index, (img, lab, color_pred) in enumerate(zip(images_inv, labels_colors, preds_colors)):
-                        self.writer.add_image('eval/'+ str(index)+'/Images', img, self.current_epoch)
-                        self.writer.add_image('eval/'+ str(index)+'/Labels', lab, self.current_epoch)
-                        self.writer.add_image('eval/'+ str(index)+'/preds', color_pred, self.current_epoch)
+                        self.writer.add_image('eval/'+ str(index)+'/Images', img, i)
+                        self.writer.add_image('eval/'+ str(index)+'/Labels', lab, i)
+                        self.writer.add_image('eval/'+ str(index)+'/preds', color_pred, i)
             #show val result on tensorboard
             if self.args.image_summary:
                 images_inv = inv_preprocess(x.clone().cpu(), self.args.show_num_images, numpy_transform=self.args.numpy_transform)
@@ -213,6 +220,8 @@ class Evaluater():
 
             if 'state_dict' in checkpoint:
                 self.model.load_state_dict(checkpoint['state_dict'])
+            elif 'model_state' in checkpoint:
+                self.model.load_state_dict(checkpoint['model_state'])
             else:
                 self.model.module.load_state_dict(checkpoint)
             self.logger.info("Checkpoint loaded successfully from "+filename)
@@ -247,7 +256,6 @@ if __name__ == '__main__':
     args, train_id, logger = init_args(args)
     args.batch_size_per_gpu = 2
 
-    # 有city_name的就是group之间的迁移-到city的验证 -- 之后还得再增加一个大group的结果
     if args.city_name != "None":
         args.data_root_path = datasets_path['group1']['data_root_path']
         args.list_path = datasets_path['group1']['list_path']

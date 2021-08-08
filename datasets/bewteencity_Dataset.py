@@ -95,7 +95,6 @@ class Group_Dataset(data.Dataset):
         
         if self.args.city_name != 'None':
             self.items = [id for id in self.items if id.split('_')[1] == self.args.city_name ]
-        # 限制只有city_name的城市可用
 
         ignore_label = -1
         self.id_to_trainid = {-1: ignore_label, 0: ignore_label, 1: ignore_label, 2: ignore_label,
@@ -241,18 +240,18 @@ class Group_Dataset(data.Dataset):
 
     def _img_transform(self, image):
         if self.args.numpy_transform:
-            image = np.asarray(image, np.float32)  # 转为numpy图片
+            image = np.asarray(image, np.float32)  
             image = image[:, :, ::-1]  # change to BGR
             image -= IMG_MEAN
             image = image.transpose((2, 0, 1)).copy() # (C x H x W)
-            new_image = torch.from_numpy(image) # 转为torch图片
+            new_image = torch.from_numpy(image) # 
         else:
             image_transforms = ttransforms.Compose([
                 ttransforms.ToTensor(),
                 ttransforms.Normalize([.485, .456, .406], [.229, .224, .225]),
             ])
             new_image = image_transforms(image)
-        return new_image  # 最终是归一化后的tensor格式数据
+        return new_image  # 
 
     def _mask_transform(self, gt_image):
         target = np.asarray(gt_image, np.float32)
