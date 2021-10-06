@@ -14,9 +14,11 @@ A **PyTorch** implementation for our **NCSU GEARS summer research program** expe
 
 Due to time constraints, we **didn't tune the model to its best performance and improve the visual results**. This may be left as our future work. 
 
-[Poster of this project](https://evanfanbao.github.io/attaches/Gear2021_Bao_Feng-3.pdf)
+[Poster of this project(vertical)](https://evanfanbao.github.io/attaches/Gear2021_Bao_Feng-3.pdf)
 
-[Report of this project ](https://evanfanbao.github.io/attaches/Gear2021_Bao_Feng-report.pdf)
+[Poster of this project(horizontal)](https://evanfanbao.github.io/attaches/poster_h.pdf)
+
+[Evaluation letter from Prof.Chi](https://evanfanbao.github.io/attaches/evaluation.pdf)
 
 ### Citation
 
