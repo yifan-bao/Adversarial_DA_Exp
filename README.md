@@ -18,6 +18,8 @@ Due to time constraints, we **didn't tune the model to its best performance and 
 
 [Poster of this project(horizontal)](https://evanfanbao.github.io/attaches/poster_h.pdf)
 
+[Report of this project(note: some of the words and formats are borrowed from the listed papers)](https://evanfanbao.github.io/attaches/Gear2021_Bao_Feng-report.pdf)
+
 [Evaluation letter from Prof.Chi](https://evanfanbao.github.io/attaches/evaluation.pdf)
 
 ### Citation
